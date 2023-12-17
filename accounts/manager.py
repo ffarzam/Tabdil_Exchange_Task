@@ -15,7 +15,6 @@ class CustomManager(BaseUserManager):
 
     def create_superuser(self, email, national_id, password):
         user = self.create_user(email, national_id, password)
-        user.is_account_enable = True
         user.is_staff = True
         user.is_superuser = True
         user.save(using=self._db)

@@ -19,13 +19,11 @@ class SellerRegisterSerializer(serializers.ModelSerializer):
         fields = ('national_id', 'email', 'password', 'password2')
 
     def create(self, validated_data):
-        print("7" * 100)
         del validated_data['password2']
         return User.objects.create_user(**validated_data)
 
     def validate_national_id(self, value):
-        print("5" * 100)
-        if not re.search(r'^\d{10}$', value):
+        if not re.match(r'^\d{10}$', value):
             raise serializers.ValidationError('National ID is invalid')
         control_number = int(value[9])
         s = sum(int(value[x]) * (10 - x) for x in range(9)) % 11
@@ -35,7 +33,6 @@ class SellerRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('National ID is invalid')
 
     def validate(self, data):
-        print("6" * 100)
         if data['password'] != data['password2']:
             raise serializers.ValidationError("Passwords don't match")
 

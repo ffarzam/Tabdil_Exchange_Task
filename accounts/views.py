@@ -28,6 +28,7 @@ class SellerRegister(APIView):
             user = serializer.create(serializer.validated_data)
             Seller.objects.create(user=user)
 
+        request.user = user
         return Response({'message': "Registered successfully"}, status=status.HTTP_201_CREATED)
 
 
@@ -48,7 +49,7 @@ class SellerLogin(APIView):
 
         access_token, refresh_token = set_token(request, user, caches)
         data = {"access": access_token, "refresh": refresh_token}
-
+        request.user = user
         return Response({"message": "Logged in successfully", "data": data}, status=status.HTTP_201_CREATED)
 
 
@@ -73,7 +74,7 @@ class LogoutView(APIView):
     authentication_classes = (RefreshTokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
-    def post(self, request):
+    def delete(self, request):
         payload = request.auth
         user = request.user
         jti = payload["jti"]
@@ -105,7 +106,7 @@ class LogoutAll(APIView):
     authentication_classes = (RefreshTokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
-    def get(self, request):
+    def delete(self, request):
         user = request.user
         caches['auth'].delete_many(caches['auth'].keys(f'user_{user.id} || *'))
 
@@ -116,7 +117,7 @@ class SelectedLogout(APIView):
     authentication_classes = (AccessTokenAuthentication,)
     permission_classes = (IsAuthenticated,)
 
-    def post(self, request):
+    def delete(self, request):
         user = request.user
         jti = request.data.get("jti")
         caches['auth'].delete(f'user_{user.id} || {jti}')
@@ -124,43 +125,3 @@ class SelectedLogout(APIView):
         return Response({"message": "Chosen account was successfully logged out"}, status=status.HTTP_200_OK)
 
 
-class DisableAccount(APIView):
-    authentication_classes = (AccessTokenAuthentication,)
-    permission_classes = (IsSuperuser,)
-
-    def get(self, request, user_spec):
-
-        if user_spec.isnumeric():
-            user = User.objects.filter(id=user_spec)
-        else:
-            user = User.objects.filter(Q(national_id=user_spec) | Q(email=user_spec))
-
-        if user.exists():
-            user = user.get()
-            user.is_active = False
-            user.save()
-            caches['auth'].delete_many(caches['auth'].keys(f'user_{user.id} || *'))
-
-            return Response({"message": "All accounts logged out and disabled"}, status=status.HTTP_200_OK)
-
-        return Response({"message": "No user with this specification was found"}, status=status.HTTP_404_NOT_FOUND)
-
-
-class EnableAccount(APIView):
-    authentication_classes = (AccessTokenAuthentication,)
-    permission_classes = (IsSuperuser,)
-
-    def get(self, request, user_spec):
-        if user_spec.isnumeric():
-            user = User.objects.filter(id=user_spec)
-        else:
-            user = User.objects.filter(Q(national_id=user_spec) | Q(email=user_spec))
-
-        if user.exists():
-            user = user.get()
-            user.is_active = True
-            user.save()
-
-            return Response({"message": "User account is enabled"}, status=status.HTTP_200_OK)
-
-        return Response({"message": "No user with this specification was found"}, status=status.HTTP_404_NOT_FOUND)

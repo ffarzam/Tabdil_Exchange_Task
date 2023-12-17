@@ -1,3 +1,5 @@
-from django.core.validators import RegexValidator
+from rest_framework.pagination import PageNumberPagination
 
-phoneNumberRegex = RegexValidator(regex=r"^09\d{9}$")
+
+class TransactionPagination(PageNumberPagination):
+    page_size = 8

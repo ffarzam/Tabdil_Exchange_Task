@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'accounts',
     'charging',
+    'minio_storage',
 ]
 
 MIDDLEWARE = [
@@ -53,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.custom_middleware.ElasticAPILoggerMiddleware'
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -172,4 +174,81 @@ CACHES = {
         },
     },
 
+    'celery_backends': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/3',
+
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+    },
+
 }
+
+RABBITMQ_HOST = os.environ.get('RABBITMQ_HOST')
+RABBITMQ_PORT = os.environ.get('RABBITMQ_PORT')
+RABBITMQ_USERNAME = os.environ.get('RABBITMQ_USERNAME')
+RABBITMQ_PASSWORD = os.environ.get('RABBITMQ_PASSWORD')
+
+CELERY_BROKER_URL = f'amqp://{RABBITMQ_HOST}'
+CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}/3'
+CELERY_TIMEZONE = 'Asia/Tehran'
+CELERY_WORKER_CONCURRENCY = 5
+CELERY_PREFETCH_MULTIPLIER = 1
+
+ELASTICSEARCH_HOST = os.environ.get("ELASTICSEARCH_HOST")
+ELASTICSEARCH_PORT = os.environ.get("ELASTICSEARCH_PORT")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+
+    'handlers': {
+        'elasticsearch_handler': {
+            'level': 'INFO',
+            'class': 'config.elastic_log_handler.ElasticsearchHandler',
+            'host': ELASTICSEARCH_HOST,
+            'port': ELASTICSEARCH_PORT,
+        },
+    },
+    "loggers": {
+        "elastic_logger": {
+            "handlers": ["elasticsearch_handler"],
+            "level": "INFO",
+            'propagate': False
+        },
+    },
+}
+
+DEFAULT_FILE_STORAGE = "minio_storage.storage.MinioMediaStorage"
+STATICFILES_STORAGE = "minio_storage.storage.MinioStaticStorage"
+MINIO_STORAGE_ENDPOINT = 'minio:9000'
+MINIO_EXTERNAL_STORAGE_ENDPOINT = "http://127.0.0.1:9000"
+
+MINIO_STORAGE_ACCESS_KEY = os.environ.get("MINIO_ROOT_USER")
+MINIO_STORAGE_SECRET_KEY = os.environ.get("MINIO_ROOT_PASSWORD")
+MINIO_STORAGE_USE_HTTPS = False
+
+MINIO_STORAGE_MEDIA_OBJECT_METADATA = {"Cache-Control": "max-age=1000"}
+MINIO_STORAGE_MEDIA_BACKUP_BUCKET = 'Recycle Bin'
+MINIO_STORAGE_MEDIA_BACKUP_FORMAT = '%c/'
+
+MINIO_STORAGE_MEDIA_BUCKET_NAME = 'local-media'
+MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
+
+MINIO_STORAGE_STATIC_BUCKET_NAME = 'local-static'
+MINIO_STORAGE_AUTO_CREATE_STATIC_BUCKET = True
+
+MINIO_STORAGE_STATIC_URL = f'{MINIO_EXTERNAL_STORAGE_ENDPOINT}/{MINIO_STORAGE_STATIC_BUCKET_NAME}'
+MINIO_STORAGE_MEDIA_URL = f'{MINIO_EXTERNAL_STORAGE_ENDPOINT}/{MINIO_STORAGE_MEDIA_BUCKET_NAME}'
+
+QUEUE_NAME_LIST = ["deposit", ]
+
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND")
+EMAIL_HOST = os.environ.get("EMAIL_HOST")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_PORT = os.environ.get("EMAIL_PORT")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS")
+

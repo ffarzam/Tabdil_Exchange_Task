@@ -11,6 +11,11 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = ['id', 'phone', 'amount', 'transaction_type', 'timestamp']
 
+
+class TransactionInputSerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    amount = serializers.IntegerField()
+
     def validate_phone(self, value):
         if not re.match(r"^09\d{9}$", value):
             raise serializers.ValidationError('Phone number is invalid')

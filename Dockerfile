@@ -15,9 +15,11 @@ COPY . /code/
 
 EXPOSE 8000
 
-CMD python manage.py makemigrations --noinput && \
+CMD python manage.py collectstatic --no-input && \
+    python manage.py makemigrations --noinput && \
     python manage.py migrate --noinput && \
-    python manage.py runserver 0.0.0.0:8000
+    gunicorn -b 0.0.0.0:8000 config.wsgi:application
+#    python manage.py runserver 0.0.0.0:8000
 
 
 

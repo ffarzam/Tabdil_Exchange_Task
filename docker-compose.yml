@@ -66,37 +66,6 @@ services:
     volumes:
       - redis_data:/data
 
-#  elasticsearch:
-#    image: elasticsearch:8.10.1
-#    container_name: elasticsearch
-#    mem_limit: 1g
-#    volumes:
-#      - elasticsearch_data:/usr/share/elasticsearch/data
-#    environment:
-#      discovery.type: single-node
-#      ES_JAVA_OPTS: -Xms512m -Xmx512m
-#      xpack.security.enabled: 'false'
-#      network.bind_host: 0.0.0.0
-#      network.host: 0.0.0.0
-#    ports:
-#      - 9200:9200
-#    networks:
-#      - main
-#    restart: always
-#
-#  kibana:
-#    image: kibana:8.10.1
-#    container_name: kibana
-#    ports:
-#      - 5601:5601
-#    depends_on:
-#      - elasticsearch
-#    networks:
-#      - main
-#    restart: always
-#    volumes:
-#      - kibana_data:/usr/share/kibana/data
-
 #  celery:
 #    container_name: celery
 #    build: .
@@ -113,17 +82,6 @@ services:
 #    volumes:
 #      - .:/code/
 
-#  celery_beat:
-#    container_name: celery_beat
-#    build: .
-#    command: celery -A config beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
-#    depends_on:
-#      - celery
-#    networks:
-#      - main
-#    restart: always
-#    volumes:
-#      - .:/code/
 
 #  flower:
 #    container_name: flower
@@ -136,40 +94,77 @@ services:
 #    depends_on:
 #      - rabbitmq
 #      - celery
-#      - celery_beat
 #    volumes:
 #      - flower_data:/flower_data
 #    restart: always
 
-#  nginx:
-#    container_name: nginx
-#    build: ./nginx
-#    ports:
-#      - 80:80
-#    depends_on:
-#      - app
-#    networks:
-#      - main
-#    restart: always
+  elasticsearch:
+    image: elasticsearch:8.10.1
+    container_name: elasticsearch
+    mem_limit: 1g
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      xpack.security.enabled: 'false'
+      network.bind_host: 0.0.0.0
+      network.host: 0.0.0.0
+    ports:
+      - 9200:9200
+    networks:
+      - main
+    restart: always
 
-#  minio:
-#    image: minio/minio
-#    container_name: minio
-#    expose:
-#      - 9000
-#      - 9001
-#    ports:
-#      - 9000:9000
-#      - 9001:9001
-#    volumes:
-#      - ./minio/data:/data
-#    environment:
-#      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-#      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-#    command: server --console-address ":9001" /data
-#    networks:
-#      - main
-#    restart: always
+  kibana:
+    image: kibana:8.10.1
+    container_name: kibana
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    networks:
+      - main
+    restart: always
+    volumes:
+      - kibana_data:/usr/share/kibana/data
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    expose:
+      - 9000
+      - 9001
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - ./minio/data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server --console-address ":9001" /data
+    networks:
+      - main
+    restart: always
+
+  master:
+    image: locustio/locust
+    ports:
+     - 8089:8089
+    volumes:
+      - ./:/mnt/locust
+    command: -f /mnt/locust/locustfile.py --master -H http://master:8089
+    networks:
+      - main
+
+  worker:
+    image: locustio/locust
+    volumes:
+      - ./:/mnt/locust
+    command: -f /mnt/locust/locustfile.py --worker --master-host master
+    networks:
+      - main
 
 networks:
   main:
@@ -177,10 +172,9 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  elasticsearch_data:
+  kibana_data:
 #  flower_data:
 #  rabbitmq_data:
 #  rabbitmq_log:
-#  elasticsearch_data:
-#  kibana_data:
-
 
