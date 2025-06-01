@@ -1,4 +1,6 @@
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
+from django.utils import timezone
 
 from accounts.models import User
 
@@ -7,19 +9,21 @@ from accounts.models import User
 
 class Seller(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    credit = models.PositiveIntegerField(default=0)
+    credit = models.PositiveIntegerField(editable=False) #Todo: Decimal
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.user.email
+        return f"Seller: {self.user.national_id} - Balance: {self.credit}"
 
 
 class Transaction(models.Model):
-    CHARGE = "C"
-    SELL = "S"
+    DEPOSIT = 'C'
+    SELLING = 'S'
 
     TRANSACTION_CHOICES = [
-        (CHARGE, "Charging"),
-        (SELL, "Selling"),
+        (DEPOSIT, "Deposit"),
+        (SELLING, "Selling"),
     ]
 
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE, editable=False)
@@ -27,13 +31,38 @@ class Transaction(models.Model):
     transaction_type = models.CharField(max_length=1, choices=TRANSACTION_CHOICES, editable=False)
     amount = models.PositiveIntegerField(editable=False) #Todo: Decimal
     timestamp = models.DateTimeField(auto_now_add=True, editable=False)
-    is_spent = models.BooleanField(default=True, editable=False)
-
-    def save(self, *args, **kwargs):
-        if self.id is None:
-            super().save(*args, **kwargs)
-        else:
-            pass
 
     def __str__(self):
         return f"{self.get_transaction_type_display()} by {self.seller}"
+
+
+class CreditRequest(models.Model):
+    PENDING = "P"
+    APPROVED = "A"
+    REJECT = "R"
+
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'),
+        (APPROVED, 'Approved'),
+        (REJECT, 'Rejected'),
+    ]
+
+    seller = models.ForeignKey(Seller, on_delete=models.CASCADE, related_name='credit_requests')
+    amount = models.PositiveIntegerField(editable=False) #Todo: Decimal
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    admin_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='approved_requests')
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    is_processed = models.BooleanField(default=False)
+
+
+class PhoneNumber(models.Model):
+    phone_number = models.CharField(max_length=11, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.phone_number
+
+
+

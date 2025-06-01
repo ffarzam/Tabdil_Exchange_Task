@@ -2,56 +2,66 @@ import json
 import logging
 
 from django.db import transaction
-from django.db.models import Sum, F, Case, When, IntegerField, Count, Avg, Value, Q
+from django.db.models import Sum, F, Case, When, IntegerField, Avg, Value
 from django.db.models.functions import Cast
 from rest_framework import generics, status
+from rest_framework.mixins import ListModelMixin, UpdateModelMixin, CreateModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import GenericViewSet
 
-from .models import Seller, Transaction
-from .serializers import TransactionSerializer, SellerSerializer, TransactionInputSerializer
+from .models import Seller, Transaction, CreditRequest
+from .serializers import TransactionSerializer, SellerSerializer, SellerSellingChargeCreateSerializer, \
+    AdminDepositRequestApprovalPatchSerializer, AdminDepositRequestApprovalListSerializer, \
+    CreditRequestListSerializer, CreditRequestCreateSerializer
 from accounts.authentication import AccessTokenAuthentication
-
-from .utils import TransactionPagination
-from config import custom_exception
+from .services import perform_charge
 
 # Create your views here.
 
 logger = logging.getLogger('elastic_logger')
 
 
-class DepositView(APIView):
+class CreditRequestView(ListModelMixin, CreateModelMixin, GenericViewSet):
+    queryset = CreditRequest.objects.all()
     authentication_classes = (AccessTokenAuthentication,)
-    permission_classes = (IsAuthenticated,)
-    serializer_class = SellerSerializer
+    permission_classes = (IsAuthenticated,) #TODO here need a permission to only accept sellers
+    serializer_class = {
+        "list": CreditRequestListSerializer,
+        "create": CreditRequestCreateSerializer,
+    }
+    http_method_names = ('get', 'post')
 
-    def post(self, request):
-        user = request.user
-        data = request.data
-        serializer = self.serializer_class(data=data)
-        serializer.is_valid(raise_exception=True)
-        amount = serializer.validated_data["credit"]
-        with transaction.atomic():
-            seller = Seller.objects.select_for_update().get(user=user)
-            seller.credit = F("credit") + amount
-            seller.save()
-            Transaction.objects.create(seller=seller, amount=amount, transaction_type='C')
+    def get_serializer_class(self):
+        return self.serializer_class.get(self.action)
 
-            log_data = {"by": seller.id,
-                        "amount": amount,
-                        "type": "charge",
-                        "unique_id": request.unique_id,
-                        }
-            logger.info(json.dumps(log_data))
+    def get_queryset(self):
+        user = self.request.user
+        seller = user.seller
+        queryset = self.queryset.filter(seller=seller)
+        return queryset
 
-        return Response({'success': True, 'message': 'Credit has been added successfully'}, status=status.HTTP_200_OK)
+
+class AdminCreditRequestApprovalView(ListModelMixin, UpdateModelMixin, GenericViewSet):
+    queryset = CreditRequest.objects.filter(is_processed=False)
+    authentication_classes = (AccessTokenAuthentication,)
+    permission_classes = (IsAuthenticated,) #TODO here need a permission to only accept admins
+    serializer_class = {
+        "list": AdminDepositRequestApprovalListSerializer,
+        "patch": AdminDepositRequestApprovalPatchSerializer,
+    }
+    http_method_names = ('get', 'patch')
+
+    def get_serializer_class(self):
+        return self.serializer_class.get(self.action)
 
 
 class SellChargeView(APIView):
     authentication_classes = (AccessTokenAuthentication,)
     permission_classes = (IsAuthenticated,)
-    serializer_class = TransactionInputSerializer
+    serializer_class = SellerSellingChargeCreateSerializer
+
 
     def post(self, request):
         user = request.user
@@ -60,23 +70,11 @@ class SellChargeView(APIView):
         serializer.is_valid(raise_exception=True)
         amount = serializer.validated_data["amount"]
         phone = serializer.validated_data["phone"]
-        with transaction.atomic():
-            seller = Seller.objects.select_for_update().get(user=user)
-            if seller.credit < amount:
-                return Response({'success': False, 'message': 'Insufficient credit'},
-                                status=status.HTTP_404_NOT_FOUND)
-            seller.credit = F("credit") - amount
-            seller.save()
-            Transaction.objects.create(seller=seller, transaction_type='S', amount=amount, phone=phone)
-
-            log_data = {"from": seller.id,
-                        "to": phone,
-                        "amount": amount,
-                        "type": "sell",
-                        "unique_id": request.unique_id,
-                        }
-            logger.info(json.dumps(log_data))
-
+        seller = user.seller
+        if seller.credit < amount:
+            return Response({'success': False, 'message': 'Insufficient credit'},
+                                    status=status.HTTP_404_NOT_FOUND)
+        perform_charge(request, user.seller.id, phone, amount)
         return Response({'success': True, 'message': 'Selling charge has been done successfully'},
                         status=status.HTTP_200_OK)
 
@@ -94,7 +92,6 @@ class ShowSellerTransactionView(generics.ListAPIView):
     authentication_classes = (AccessTokenAuthentication,)
     permission_classes = (IsAuthenticated,)
     serializer_class = TransactionSerializer
-    pagination_class = TransactionPagination
 
     def get_queryset(self):
         return Transaction.objects.select_related("seller__user").filter(seller__user=self.request.user)

@@ -17,20 +17,20 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(models.Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    fields = ('seller', 'phone', 'transaction_type', 'amount', 'timestamp', 'is_spent')
-    readonly_fields = ('seller', 'phone', 'transaction_type', 'amount', 'timestamp', 'is_spent')
+    fields = ('seller', 'phone', 'transaction_type', 'amount', 'timestamp')
+    readonly_fields = ('seller', 'phone', 'transaction_type', 'amount', 'timestamp')
 
     add_fieldsets = (
         (None, {
             "classes": ("wide",),
             "fields": (
-                'seller', 'phone', 'transaction_type', 'amount', 'timestamp', 'is_spent'
+                'seller', 'phone', 'transaction_type', 'amount', 'timestamp',
             )}
          ),
     )
 
     list_display = [
-        'seller', 'phone', 'transaction_type', 'amount', 'timestamp', 'is_spent'
+        'seller', 'phone', 'transaction_type', 'amount', 'timestamp',
     ]
 
     list_filter = ['seller__user__email', 'phone', 'transaction_type']

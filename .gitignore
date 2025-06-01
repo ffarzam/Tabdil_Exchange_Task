@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 /minio/
 /locustfile.py
+/.idea/
