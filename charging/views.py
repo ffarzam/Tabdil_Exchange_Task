@@ -32,11 +32,8 @@ class DepositView(APIView):
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         amount = serializer.validated_data["credit"]
-        # deposit_task.delay(user.id, amount, request.unique_id)
         with transaction.atomic():
             seller = Seller.objects.select_for_update().get(user=user)
-            # seller = Seller.objects.select_for_update().filter(user=user).first()
-            # seller.credit += amount
             seller.credit = F("credit") + amount
             seller.save()
             Transaction.objects.create(seller=seller, amount=amount, transaction_type='C')
@@ -49,8 +46,6 @@ class DepositView(APIView):
             logger.info(json.dumps(log_data))
 
         return Response({'success': True, 'message': 'Credit has been added successfully'}, status=status.HTTP_200_OK)
-        # return Response({'message': 'Transaction will be done soon, we will inform you via email'},
-        #                 status=status.HTTP_200_OK)
 
 
 class SellChargeView(APIView):
@@ -70,7 +65,6 @@ class SellChargeView(APIView):
             if seller.credit < amount:
                 return Response({'success': False, 'message': 'Insufficient credit'},
                                 status=status.HTTP_404_NOT_FOUND)
-            # seller.credit -= amount
             seller.credit = F("credit") - amount
             seller.save()
             Transaction.objects.create(seller=seller, transaction_type='S', amount=amount, phone=phone)
@@ -111,8 +105,6 @@ class CheckTransaction(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        # seller = Seller.objects.get(user=request.user)
-        # seller_credit = seller.credit
 
         data = Transaction.objects.select_related("seller__user"). \
             filter(seller__user=request.user).values("amount", "transaction_type"). \
@@ -130,6 +122,4 @@ class CheckTransaction(APIView):
 
         state = data["seller_credit"] == data["transaction_balance"]
 
-        print("1"*100)
-        print(data := Transaction.objects.only("amount").values())
         return Response({"equal": state, 'data': data})
