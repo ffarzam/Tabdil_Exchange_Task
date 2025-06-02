@@ -75,7 +75,5 @@ class CreditRequestCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
     def create(self, validated_data):
-        print("1"*100)
-        print(validated_data)
         validated_data["seller"] = self.context["request"].user.seller
         return super().create(validated_data)
