@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'accounts',
     'charging',
     'minio_storage',
-    'shell_plus'
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
