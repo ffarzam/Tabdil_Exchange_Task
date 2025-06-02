@@ -9,7 +9,7 @@ from accounts.models import User
 
 class Seller(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    credit = models.PositiveIntegerField(editable=False) #Todo: Decimal
+    credit = models.PositiveIntegerField(default=0, editable=False) #Todo: Decimal
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
