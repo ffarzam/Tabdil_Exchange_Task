@@ -32,7 +32,7 @@ class CreditApproveStrategy:
             logger.info(json.dumps(log_data))
 
 
-class CreditRejectStrategy():
+class CreditRejectStrategy:
     def apply(self, request, instance, validated_data):
         with transaction.atomic():
             instance = instance.__class__.objects.select_for_update().get(id=instance.id)
