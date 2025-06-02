@@ -50,12 +50,13 @@ class AdminDepositRequestApprovalPatchSerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         data = super().to_internal_value(data)
-        data['is_processed'] = True
-        data['admin_user'] = self.context["request"].user
+
         return data
 
     def update(self, instance, validated_data):
         request = self.context["request"]
+        validated_data['is_processed'] = True
+        validated_data['admin_user'] = self.context["request"].user
         apply_admin_action_on_seller_request_for_credit(instance, validated_data, request)
         instance.refresh_from_db()
         return instance
@@ -73,7 +74,8 @@ class CreditRequestCreateSerializer(serializers.ModelSerializer):
         fields = ("id", "amount")
         read_only_fields = ('id',)
 
-    def to_internal_value(self, data):
-        data = super().to_internal_value(data)
-        data['seller'] = self.context["request"].user.seller
-        return data
+    def create(self, validated_data):
+        print("1"*100)
+        print(validated_data)
+        validated_data["seller"] = self.context["request"].user.seller
+        return super().create(validated_data)

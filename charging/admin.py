@@ -8,7 +8,7 @@ from . import models
 @admin.register(models.Seller)
 class TransactionAdmin(admin.ModelAdmin):
     fields = ('user', 'credit')
-    readonly_fields = ('user', 'credit')
+    readonly_fields = ('credit',)
     list_display = [
         'user', 'credit'
     ]
@@ -36,3 +36,8 @@ class TransactionAdmin(admin.ModelAdmin):
     list_filter = ['seller__user__email', 'phone', 'transaction_type']
     search_fields = ['seller__user__email__istartswith', 'phone', 'transaction_type']
     list_per_page = 20
+
+
+@admin.register(models.CreditRequest)
+class CreditRequestAdmin(admin.ModelAdmin):
+    pass

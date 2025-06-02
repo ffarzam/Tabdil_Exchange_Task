@@ -61,7 +61,7 @@ def perform_charge(request, seller_id, phone_number, amount):
         if seller.credit < amount:
             raise ValueError("Insufficient credit")
 
-        seller.credit = F("credit") + amount
+        seller.credit = F("credit") - amount
         seller.save(update_fields=("credit",))
 
         Transaction.objects.create(
@@ -71,7 +71,7 @@ def perform_charge(request, seller_id, phone_number, amount):
             transaction_type=Transaction.SELLING,
         )
 
-        PhoneNumber.objects.get_or_create(number=phone_number)
+        PhoneNumber.objects.get_or_create(phone_number=phone_number)
         log_data = {"from": seller.id,
                     "to": phone_number,
                     "amount": amount,

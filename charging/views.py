@@ -49,7 +49,7 @@ class AdminCreditRequestApprovalView(ListModelMixin, UpdateModelMixin, GenericVi
     permission_classes = (IsAuthenticated,) #TODO here need a permission to only accept admins
     serializer_class = {
         "list": AdminDepositRequestApprovalListSerializer,
-        "patch": AdminDepositRequestApprovalPatchSerializer,
+        "partial_update": AdminDepositRequestApprovalPatchSerializer,
     }
     http_method_names = ('get', 'patch')
 

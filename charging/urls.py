@@ -9,7 +9,7 @@ app_name = "charging"
 router = routers.DefaultRouter()
 
 router.register('deposit_request', CreditRequestView, basename='deposit_request')
-router.register('admin_deposit_request_approval', AdminCreditRequestApprovalView, basename='demand_quote')
+router.register('admin_deposit_request_action', AdminCreditRequestApprovalView, basename='demand_quote')
 
 urlpatterns = router.urls
 

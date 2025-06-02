@@ -254,7 +254,6 @@ EMAIL_PORT = os.environ.get("EMAIL_PORT")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS")
 
 REST_FRAMEWORK = {
-    "DEFAULT_PAGINATION_CLASSES": [
-        "rest_framework.pagination.PageNumberPagination"
-    ]
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
 }

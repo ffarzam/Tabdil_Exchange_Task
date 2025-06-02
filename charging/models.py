@@ -29,7 +29,7 @@ class Transaction(models.Model):
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE, editable=False)
     phone = models.CharField(max_length=11, null=True, blank=True, editable=False)
     transaction_type = models.CharField(max_length=1, choices=TRANSACTION_CHOICES, editable=False)
-    amount = models.PositiveIntegerField(editable=False) #Todo: Decimal
+    amount = models.PositiveIntegerField() #Todo: Decimal
     timestamp = models.DateTimeField(auto_now_add=True, editable=False)
 
     def __str__(self):
@@ -48,13 +48,16 @@ class CreditRequest(models.Model):
     ]
 
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE, related_name='credit_requests')
-    amount = models.PositiveIntegerField(editable=False) #Todo: Decimal
+    amount = models.PositiveIntegerField(default=0) #Todo: Decimal
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     admin_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='approved_requests')
     created_at = models.DateTimeField(auto_now_add=True)
     approved_at = models.DateTimeField(null=True, blank=True)
     is_processed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.seller.user.national_id} - {self.amount}"
 
 
 class PhoneNumber(models.Model):
