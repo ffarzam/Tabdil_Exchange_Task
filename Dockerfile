@@ -17,7 +17,7 @@ EXPOSE 8000
 
 CMD python manage.py makemigrations --noinput && \
     python manage.py migrate --noinput && \
-    gunicorn -b 0.0.0.0:8000 config.wsgi:application --reload
+    gunicorn -b 0.0.0.0:8000 config.wsgi:application --workers 4 --reload
 #    python manage.py runserver 0.0.0.0:8000
 
 
