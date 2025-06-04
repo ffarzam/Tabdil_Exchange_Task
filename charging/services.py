@@ -3,6 +3,7 @@ import logging
 
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 
 from charging.models import CreditRequest, Seller, Transaction, PhoneNumber
 
@@ -10,10 +11,11 @@ logger = logging.getLogger('elastic_logger')
 
 
 class CreditApproveStrategy:
-    def apply(self, request, instance, validated_data):
+    def apply(self, instance, validated_data):
         with transaction.atomic():
             instance = instance.__class__.objects.select_for_update().get(id=instance.id)
             seller = Seller.objects.select_for_update().get(id=instance.seller.id)
+            validated_data["change_status_at"] = timezone.now()
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
             instance.save(update_fields=validated_data.keys())
@@ -24,16 +26,10 @@ class CreditApproveStrategy:
                 amount=instance.amount,
                 transaction_type=Transaction.DEPOSIT,
             )
-            log_data = {"by": seller.id,
-                        "amount": instance.amount,
-                        "type": "charge",
-                        "unique_id": request.unique_id,
-                        }
-            logger.info(json.dumps(log_data))
 
 
 class CreditRejectStrategy:
-    def apply(self, request, instance, validated_data):
+    def apply(self, instance, validated_data):
         with transaction.atomic():
             instance = instance.__class__.objects.select_for_update().get(id=instance.id)
             for attr, value in validated_data.items():
@@ -46,15 +42,15 @@ ACTION_STRATEGY = {
     CreditRequest.REJECT: CreditRejectStrategy(),
 }
 
-def apply_admin_action_on_seller_request_for_credit(instance, validated_data, request):
+def apply_admin_action_on_seller_request_for_credit(instance, validated_data):
 
     action_strategy = ACTION_STRATEGY.get(validated_data['status'])
     if action_strategy:
-        action_strategy.apply(request, instance, validated_data)
+        action_strategy.apply(instance, validated_data)
 
 
 
-def perform_charge(request, seller_id, phone_number, amount):
+def perform_charge(seller_id, phone_number, amount):
     with transaction.atomic():
         seller = Seller.objects.select_for_update().get(id=seller_id)
 
@@ -72,10 +68,4 @@ def perform_charge(request, seller_id, phone_number, amount):
         )
 
         PhoneNumber.objects.get_or_create(phone_number=phone_number)
-        log_data = {"from": seller.id,
-                    "to": phone_number,
-                    "amount": amount,
-                    "type": "sell",
-                    "unique_id": request.unique_id,
-                    }
-        logger.info(json.dumps(log_data))
+
