@@ -1,7 +1,3 @@
-import json
-import logging
-
-from django.db import transaction
 from django.db.models import Sum, F, Case, When, IntegerField, Avg, Value
 from django.db.models.functions import Cast
 from rest_framework import generics, status
@@ -18,9 +14,9 @@ from .serializers import TransactionSerializer, SellerSerializer, SellerSellingC
 from accounts.authentication import AccessTokenAuthentication
 from .services import perform_charge
 
+
 # Create your views here.
 
-logger = logging.getLogger('elastic_logger')
 
 
 class CreditRequestView(ListModelMixin, CreateModelMixin, GenericViewSet):
@@ -73,8 +69,13 @@ class SellChargeView(APIView):
         seller = user.seller
         if seller.credit < amount:
             return Response({'success': False, 'message': 'Insufficient credit'},
-                                    status=status.HTTP_404_NOT_FOUND)
-        perform_charge(request, user.seller.id, phone, amount)
+                                    status=status.HTTP_400_BAD_REQUEST)
+        try:
+            perform_charge(user.seller.id, phone, amount)
+        except:
+            return Response({'success': False, 'message': 'Insufficient credit'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
         return Response({'success': True, 'message': 'Selling charge has been done successfully'},
                         status=status.HTTP_200_OK)
 
