@@ -202,21 +202,34 @@ ELASTICSEARCH_PORT = os.environ.get("ELASTICSEARCH_PORT")
 
 LOGGING = {
     "version": 1,
-    "disable_existing_loggers": False,
-
-    'handlers': {
-        'elasticsearch_handler': {
-            'level': 'INFO',
-            'class': 'config.elastic_log_handler.ElasticsearchHandler',
-            'host': ELASTICSEARCH_HOST,
-            'port': ELASTICSEARCH_PORT,
+    "formatters": {
+        "fluent": {
+            "()": "config.fluentd.CustomFluentRecordFormatter",
+            "format": {
+                "timestamp": "%(asctime)s",
+            },
+        },
+    },
+    "handlers": {
+        "fluentd": {
+            "level": "INFO",
+            "class": "fluent.handler.FluentHandler",
+            "tag": "tabdil.django_app",
+            "host": "fluentd",
+            "port": 24224,
+            "formatter": "fluent",
         },
     },
     "loggers": {
-        "elastic_logger": {
-            "handlers": ["elasticsearch_handler"],
+        "api": {
+            "handlers": ["fluentd"],
             "level": "INFO",
-            'propagate': False
+            "propagate": True,
+        },
+        "exception": {
+            "handlers": ["fluentd"],
+            "level": "ERROR",
+            "propagate": True,
         },
     },
 }
