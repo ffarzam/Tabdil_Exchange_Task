@@ -1,6 +1,8 @@
 import re
 
-from rest_framework import serializers
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
+
 from .models import Seller, Transaction, CreditRequest
 from .services import apply_admin_action_on_seller_request_for_credit
 
@@ -19,7 +21,7 @@ class SellerSellingChargeCreateSerializer(serializers.Serializer):
 
     def validate_phone(self, value):
         if not re.match(r"^09\d{9}$", value):
-            raise serializers.ValidationError("Phone number is invalid")
+            raise ValidationError({"message":"Phone number is invalid"}, code=status.HTTP_400_BAD_REQUEST)
         return value
 
 
@@ -48,24 +50,20 @@ class AdminDepositRequestApprovalPatchSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Only 'Approved' or 'Rejected' status is allowed.")
         return value
 
-    def to_internal_value(self, data):
-        data = super().to_internal_value(data)
-
-        return data
 
     def update(self, instance, validated_data):
         request = self.context["request"]
         validated_data['is_processed'] = True
-        validated_data['admin_user'] = self.context["request"].user
-        apply_admin_action_on_seller_request_for_credit(instance, validated_data, request)
+        validated_data['admin_user'] = request.user
+        apply_admin_action_on_seller_request_for_credit(instance, validated_data)
         instance.refresh_from_db()
         return instance
+
 
 class CreditRequestListSerializer(serializers.ModelSerializer):
     class Meta:
         model = CreditRequest
         fields = "__all__"
-
 
 
 class CreditRequestCreateSerializer(serializers.ModelSerializer):
