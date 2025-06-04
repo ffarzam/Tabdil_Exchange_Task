@@ -19,6 +19,18 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/', include("accounts.urls")),
-    path('charging/', include("charging.urls")),
+
+    path(
+        "v1/",
+        include(
+            (
+                [
+                    path('accounts/', include("accounts.urls")),
+                    path('charging/', include("charging.urls")),
+                ],
+                "tabdil",
+            ),
+            namespace="v1",
+        ),
+    ),
 ]
