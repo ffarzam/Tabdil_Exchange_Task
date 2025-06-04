@@ -1,0 +1,197 @@
+services:
+
+#  rabbitmq:
+#    container_name: rabbitmq
+#    image: rabbitmq:3-management
+#    networks:
+#      - main
+#    ports:
+#      - 5672:5672
+#      - 15672:15672
+#    volumes:
+#      - rabbitmq_data:/var/lib/rabbitmq/
+#      - rabbitmq_log:/var/log/rabbitmq
+#    restart: always
+
+  postgres:
+    container_name: postgres
+    image: postgres:14.0
+    environment:
+      POSTGRES_USER: ${USER}
+      POSTGRES_PASSWORD: ${PASSWORD}
+      POSTGRES_DB: ${NAME}
+    networks:
+      - main
+    ports:
+      - 5432:5432
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: app
+    volumes:
+      - .:/code/
+    networks:
+      - main
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - 8000:8000
+    restart: always
+
+#  rabbitmq_queue:
+#    container_name: rabbitmq_queue
+#    build: .
+#    command: python manage.py launch_queue_listener
+#    volumes:
+#      - .:/code/
+#    networks:
+#      - main
+#    depends_on:
+#      - rabbitmq
+#      - app
+#    restart: always
+
+  redis:
+    container_name: redis
+    image: redis:7.2
+    networks:
+      - main
+    ports:
+      - 6379:6379
+    restart: always
+    volumes:
+      - redis_data:/data
+
+#  celery:
+#    container_name: celery
+#    build: .
+#    command: celery -A config worker -l INFO
+#    depends_on:
+#      - rabbitmq
+#      - redis
+#      - app
+#    environment:
+#      - C_FORCE_ROOT="true"
+#    networks:
+#      - main
+#    restart: always
+#    volumes:
+#      - .:/code/
+
+
+#  flower:
+#    container_name: flower
+#    build: .
+#    command: celery -A config flower
+#    networks:
+#      - main
+#    ports:
+#      - 5555:5555
+#    depends_on:
+#      - rabbitmq
+#      - celery
+#    volumes:
+#      - flower_data:/flower_data
+#    restart: always
+
+  elasticsearch:
+    image: elasticsearch:9.0.1
+    container_name: elasticsearch
+    mem_limit: 1g
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      xpack.security.enabled: 'false'
+      network.bind_host: 0.0.0.0
+      network.host: 0.0.0.0
+    ports:
+      - 9200:9200
+    networks:
+      - main
+    restart: always
+
+  kibana:
+    image: kibana:9.0.1
+    container_name: kibana
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    networks:
+      - main
+    restart: always
+    volumes:
+      - kibana_data:/usr/share/kibana/data
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    expose:
+      - 9000
+      - 9001
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - ./minio/data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server --console-address ":9001" /data
+    networks:
+      - main
+    restart: always
+
+  master:
+    image: locustio/locust
+    ports:
+     - 8089:8089
+    volumes:
+      - ./:/mnt/locust
+    command: -f /mnt/locust/locustfile.py --master -H http://master:8089
+    networks:
+      - main
+
+  worker:
+    image: locustio/locust
+    volumes:
+      - ./:/mnt/locust
+    command: -f /mnt/locust/locustfile.py --worker --master-host master
+    networks:
+      - main
+
+
+  fluentd:
+    build: ./fluentd
+#    volumes:
+#      - ./fluentd/conf:/fluentd/etc
+    depends_on:
+      - elasticsearch
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    environment:
+      ELASTIC_HOST: ${ELASTICSEARCH_HOST}
+      ELASTIC_PORT: ${ELASTICSEARCH_PORT}
+    networks:
+      - main
+    restart: always
+
+networks:
+  main:
+
+volumes:
+  postgres_data:
+  redis_data:
+  elasticsearch_data:
+  kibana_data:
+#  flower_data:
+#  rabbitmq_data:
+#  rabbitmq_log:
+
