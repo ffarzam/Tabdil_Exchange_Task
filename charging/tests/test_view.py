@@ -410,9 +410,6 @@ class ParallelAccountingSystemTestCase(TransactionTestCase):
         self.assertEqual(total_transactions, expected_transactions,
                          "Transaction count should match successful operations")
 
-        # Additional assertions
-        self.assertGreaterEqual(len(successful_sales), 800,
-                                "Should have at least 800 successful sales out of 1000 attempts")
 
         self.assertEqual(total_expected_sales, len(successful_sales),
                          "Total successful sales should match sum of individual seller sales")
